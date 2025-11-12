@@ -37,19 +37,27 @@ export function CameraScreen({ onClose }: CameraScreenProps) {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
 
-          // Wait for video metadata to load
-          await new Promise<void>((resolve) => {
-            if (videoRef.current) {
-              videoRef.current.onloadedmetadata = () => {
-                resolve();
-              };
-            }
-          });
+          // Add event listeners for debugging
+          videoRef.current.onloadedmetadata = () => {
+            console.log('Video metadata loaded');
+          };
 
-          // Wait for video to be ready and play
-          await videoRef.current.play();
-          setIsVideoPlaying(true);
-          console.log('Video playing');
+          videoRef.current.oncanplay = () => {
+            console.log('Video can play');
+          };
+
+          videoRef.current.onplay = () => {
+            console.log('Video playing event fired');
+            setIsVideoPlaying(true);
+          };
+
+          // Try to play - don't await, let it happen async
+          videoRef.current.play().then(() => {
+            console.log('Video play() promise resolved');
+            setIsVideoPlaying(true);
+          }).catch((err) => {
+            console.error('Video play() error:', err);
+          });
         }
 
         // Initialize barcode reader
@@ -124,7 +132,7 @@ export function CameraScreen({ onClose }: CameraScreenProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black" style={{ zIndex: 9999 }}>
+    <div className="fixed inset-0" style={{ zIndex: 9999, backgroundColor: '#111' }}>
       <video
         ref={videoRef}
         autoPlay
@@ -137,7 +145,8 @@ export function CameraScreen({ onClose }: CameraScreenProps) {
           width: '100%',
           height: '100%',
           objectFit: 'cover',
-          zIndex: 1
+          zIndex: 1,
+          backgroundColor: 'transparent'
         }}
       />
 
