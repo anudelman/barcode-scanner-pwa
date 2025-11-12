@@ -10,6 +10,7 @@ export function CameraScreen({ onClose }: CameraScreenProps) {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scannedData, setScannedData] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
 
@@ -47,6 +48,7 @@ export function CameraScreen({ onClose }: CameraScreenProps) {
 
           // Wait for video to be ready and play
           await videoRef.current.play();
+          setIsVideoPlaying(true);
           console.log('Video playing');
         }
 
@@ -122,33 +124,43 @@ export function CameraScreen({ onClose }: CameraScreenProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black">
+    <div className="fixed inset-0 bg-black" style={{ zIndex: 9999 }}>
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted
-        className="absolute inset-0 w-full h-full object-cover"
-        style={{ transform: 'scaleX(1)' }}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          zIndex: 1
+        }}
       />
-      
-      <div className="absolute inset-0 flex flex-col">
+
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10 }} className="flex flex-col">
         <button
           onClick={onClose}
-          className="absolute top-12 right-6 z-10 bg-black/50 rounded-full p-2 hover:bg-black/70 transition-colors"
+          className="absolute top-12 right-6 z-20 bg-black/50 rounded-full p-2 hover:bg-black/70 transition-colors"
         >
           <X color="white" size={32} />
         </button>
 
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <div className="w-64 h-64 border-2 border-white rounded-xl" />
+        <div className="flex-1 flex flex-col items-center justify-center pointer-events-none">
+          <div className="w-64 h-64 border-2 border-white rounded-xl" style={{ borderColor: 'rgba(255,255,255,0.8)' }} />
           <p className="text-white mt-5 text-center px-5">
             Position the barcode within the frame
           </p>
+          {!isVideoPlaying && (
+            <p className="text-red-400 mt-2 text-sm">Video stream starting...</p>
+          )}
         </div>
 
         {scannedData && (
-          <div className="absolute bottom-24 left-5 right-5 bg-black/80 p-5 rounded-xl text-center">
+          <div className="absolute bottom-24 left-5 right-5 bg-black/80 p-5 rounded-xl text-center z-20">
             <p className="text-green-400 text-xl mb-2">Barcode Scanned!</p>
             <p className="text-white">{scannedData}</p>
           </div>
