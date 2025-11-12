@@ -16,38 +16,63 @@ export function CameraScreen({ onClose }: CameraScreenProps) {
   useEffect(() => {
     const startCamera = async () => {
       try {
+        // Check if mediaDevices is supported
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Camera API not supported in this browser');
+        }
+
+        console.log('Requesting camera access...');
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
+          video: {
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
         });
-        
+
+        console.log('Camera access granted');
         setHasPermission(true);
-        
+
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+
+          // Wait for video to be ready
+          await videoRef.current.play();
+          console.log('Video playing');
         }
 
         // Initialize barcode reader
         codeReaderRef.current = new BrowserMultiFormatReader();
-        
+        console.log('Barcode reader initialized');
+
         // Start continuous scanning
         if (videoRef.current) {
           codeReaderRef.current.decodeFromVideoElement(
             videoRef.current,
-            (result, err) => {
+            (result: any, err: any) => {
               if (result) {
+                console.log('Barcode detected:', result.getText());
                 setScannedData(result.getText());
                 // Auto close after 2 seconds
                 setTimeout(() => {
                   onClose();
                 }, 2000);
               }
+              if (err && err.name !== 'NotFoundException') {
+                console.error('Decode error:', err);
+              }
             }
           );
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Camera access error:', err);
         setHasPermission(false);
-        setError('Unable to access camera. Please ensure camera permissions are granted.');
+        const errorMessage = err.name === 'NotAllowedError'
+          ? 'Camera permission denied. Please allow camera access in your browser settings.'
+          : err.name === 'NotFoundError'
+          ? 'No camera found on this device.'
+          : err.message || 'Unable to access camera. Please ensure camera permissions are granted.';
+        setError(errorMessage);
       }
     };
 
