@@ -36,7 +36,16 @@ export function CameraScreen({ onClose }: CameraScreenProps) {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
 
-          // Wait for video to be ready
+          // Wait for video metadata to load
+          await new Promise<void>((resolve) => {
+            if (videoRef.current) {
+              videoRef.current.onloadedmetadata = () => {
+                resolve();
+              };
+            }
+          });
+
+          // Wait for video to be ready and play
           await videoRef.current.play();
           console.log('Video playing');
         }
@@ -118,7 +127,9 @@ export function CameraScreen({ onClose }: CameraScreenProps) {
         ref={videoRef}
         autoPlay
         playsInline
+        muted
         className="absolute inset-0 w-full h-full object-cover"
+        style={{ transform: 'scaleX(1)' }}
       />
       
       <div className="absolute inset-0 flex flex-col">
