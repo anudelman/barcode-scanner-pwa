@@ -39,12 +39,20 @@ export function CameraScreen({ onClose }: CameraScreenProps) {
               videoRef.current,
               (result: any, err: any) => {
                 if (result) {
-                  console.log('Barcode detected:', result.getText());
-                  setScannedData(result.getText());
-                  // Auto close after 2 seconds
+                  const scannedText = result.getText();
+                  console.log('Barcode detected:', scannedText);
+                  setScannedData(scannedText);
+
+                  // Navigate to URL after a short delay
                   setTimeout(() => {
-                    onClose();
-                  }, 2000);
+                    // Check if it's a valid URL
+                    if (scannedText.startsWith('http://') || scannedText.startsWith('https://')) {
+                      window.location.href = scannedText;
+                    } else {
+                      // If not a URL, just close
+                      onClose();
+                    }
+                  }, 1500);
                 }
                 if (err && err.name !== 'NotFoundException') {
                   console.error('Decode error:', err);
@@ -137,7 +145,14 @@ export function CameraScreen({ onClose }: CameraScreenProps) {
         </button>
 
         <div className="flex-1 flex flex-col items-center justify-center pointer-events-none">
-          <div className="w-64 h-64 border-2 border-white rounded-xl" style={{ borderColor: 'rgba(255,255,255,0.8)' }} />
+          <div
+            className="w-64 h-64 rounded-xl transition-all duration-300"
+            style={{
+              borderWidth: scannedData ? '4px' : '2px',
+              borderColor: scannedData ? '#84cc16' : 'rgba(255,255,255,0.8)',
+              borderStyle: 'solid'
+            }}
+          />
           <p className="text-white mt-5 text-center px-5">
             Position the barcode within the frame
           </p>
@@ -149,7 +164,10 @@ export function CameraScreen({ onClose }: CameraScreenProps) {
         {scannedData && (
           <div className="absolute bottom-24 left-5 right-5 bg-black/80 p-5 rounded-xl text-center z-20">
             <p className="text-green-400 text-xl mb-2">Barcode Scanned!</p>
-            <p className="text-white">{scannedData}</p>
+            <p className="text-white text-sm mb-2">{scannedData}</p>
+            {(scannedData.startsWith('http://') || scannedData.startsWith('https://')) && (
+              <p className="text-green-300 text-xs">Navigating to URL...</p>
+            )}
           </div>
         )}
       </div>
