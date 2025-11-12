@@ -20,9 +20,14 @@ export function CameraScreen({ onClose }: CameraScreenProps) {
         console.log('Requesting camera access...');
         setHasPermission(true);
 
+        // Wait a bit for the video element to be mounted in the DOM
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         // Initialize barcode reader
         codeReaderRef.current = new BrowserMultiFormatReader();
         console.log('Barcode reader initialized');
+
+        console.log('Video ref exists?', !!videoRef.current);
 
         // Let ZXing handle the camera completely
         if (videoRef.current) {
@@ -50,16 +55,19 @@ export function CameraScreen({ onClose }: CameraScreenProps) {
               console.log('ZXing video device started successfully');
               setIsVideoPlaying(true);
             })
-            .catch((err) => {
+            .catch((err: Error) => {
               console.error('ZXing decodeFromVideoDevice error:', err);
               setHasPermission(false);
-              const errorMessage = err.name === 'NotAllowedError'
+              const errorMessage = (err as any).name === 'NotAllowedError'
                 ? 'Camera permission denied. Please allow camera access in your browser settings.'
-                : err.name === 'NotFoundError'
+                : (err as any).name === 'NotFoundError'
                 ? 'No camera found on this device.'
                 : err.message || 'Unable to access camera.';
               setError(errorMessage);
             });
+        } else {
+          console.error('Video ref is null!');
+          setError('Video element not found');
         }
       } catch (err: any) {
         console.error('Camera initialization error:', err);
