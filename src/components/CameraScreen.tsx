@@ -17,81 +17,54 @@ export function CameraScreen({ onClose }: CameraScreenProps) {
   useEffect(() => {
     const startCamera = async () => {
       try {
-        // Check if mediaDevices is supported
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          throw new Error('Camera API not supported in this browser');
-        }
-
         console.log('Requesting camera access...');
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          },
-        });
-
-        console.log('Camera access granted');
         setHasPermission(true);
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-
-          // Add event listeners for debugging
-          videoRef.current.onloadedmetadata = () => {
-            console.log('Video metadata loaded');
-          };
-
-          videoRef.current.oncanplay = () => {
-            console.log('Video can play');
-          };
-
-          videoRef.current.onplay = () => {
-            console.log('Video playing event fired');
-            setIsVideoPlaying(true);
-          };
-
-          // Try to play - don't await, let it happen async
-          videoRef.current.play().then(() => {
-            console.log('Video play() promise resolved');
-            setIsVideoPlaying(true);
-          }).catch((err) => {
-            console.error('Video play() error:', err);
-          });
-        }
 
         // Initialize barcode reader
         codeReaderRef.current = new BrowserMultiFormatReader();
         console.log('Barcode reader initialized');
 
-        // Start continuous scanning
+        // Let ZXing handle the camera completely
         if (videoRef.current) {
-          codeReaderRef.current.decodeFromVideoElement(
-            videoRef.current,
-            (result: any, err: any) => {
-              if (result) {
-                console.log('Barcode detected:', result.getText());
-                setScannedData(result.getText());
-                // Auto close after 2 seconds
-                setTimeout(() => {
-                  onClose();
-                }, 2000);
+          console.log('Starting ZXing decodeFromVideoDevice...');
+
+          codeReaderRef.current
+            .decodeFromVideoDevice(
+              undefined, // Use default camera
+              videoRef.current,
+              (result: any, err: any) => {
+                if (result) {
+                  console.log('Barcode detected:', result.getText());
+                  setScannedData(result.getText());
+                  // Auto close after 2 seconds
+                  setTimeout(() => {
+                    onClose();
+                  }, 2000);
+                }
+                if (err && err.name !== 'NotFoundException') {
+                  console.error('Decode error:', err);
+                }
               }
-              if (err && err.name !== 'NotFoundException') {
-                console.error('Decode error:', err);
-              }
-            }
-          );
+            )
+            .then(() => {
+              console.log('ZXing video device started successfully');
+              setIsVideoPlaying(true);
+            })
+            .catch((err) => {
+              console.error('ZXing decodeFromVideoDevice error:', err);
+              setHasPermission(false);
+              const errorMessage = err.name === 'NotAllowedError'
+                ? 'Camera permission denied. Please allow camera access in your browser settings.'
+                : err.name === 'NotFoundError'
+                ? 'No camera found on this device.'
+                : err.message || 'Unable to access camera.';
+              setError(errorMessage);
+            });
         }
       } catch (err: any) {
-        console.error('Camera access error:', err);
+        console.error('Camera initialization error:', err);
         setHasPermission(false);
-        const errorMessage = err.name === 'NotAllowedError'
-          ? 'Camera permission denied. Please allow camera access in your browser settings.'
-          : err.name === 'NotFoundError'
-          ? 'No camera found on this device.'
-          : err.message || 'Unable to access camera. Please ensure camera permissions are granted.';
-        setError(errorMessage);
+        setError(err.message || 'Unable to initialize camera.');
       }
     };
 
@@ -99,12 +72,9 @@ export function CameraScreen({ onClose }: CameraScreenProps) {
 
     // Cleanup
     return () => {
+      console.log('Cleaning up camera...');
       if (codeReaderRef.current) {
         codeReaderRef.current.reset();
-      }
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
       }
     };
   }, [onClose]);
